@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	config "github.com/adminoid/vuego/internal/config"
+	"github.com/adminoid/vuego/internal/entities/user"
 	"github.com/adminoid/vuego/pkg/clients/postgresql"
+	"github.com/adminoid/vuego/pkg/logging"
 	"github.com/adminoid/vuego/pkg/project_path"
 )
 
@@ -23,13 +25,12 @@ func main() {
 
 	fmt.Println(postgresqlClient)
 
-	//repository := author.NewRepository(postgreSQLClient, logger)
-	//a := author2.Author{
-	//	Name: "OK",
-	//}
-	//err = repository.Create(context.TODO(), &a)
-	//if err != nil {
-	//	logger.Fatal(err)
-	//}
+	logger := logging.GetLogger()
 
+	repository := user.NewRepository(postgresqlClient, logger)
+	users, err1 := repository.FindAll(context.TODO())
+	if err1 != nil {
+		logger.Fatal(err1)
+	}
+	fmt.Println(users)
 }

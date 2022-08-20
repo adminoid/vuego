@@ -1,0 +1,2 @@
+time="2022-08-21T01:39:55+03:00" level=trace msg="SQL Query:  SELECT id, name FROM public.users; " func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:33"
+time="2022-08-21T01:42:23+03:00" level=trace msg="SQL Query:  SELECT id, name FROM public.users; " func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:33"
