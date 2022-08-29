@@ -2,35 +2,62 @@ package main
 
 import (
 	"context"
-	"fmt"
 	config "github.com/adminoid/vuego/internal/config"
 	"github.com/adminoid/vuego/internal/entities/user"
 	"github.com/adminoid/vuego/pkg/clients/postgresql"
 	"github.com/adminoid/vuego/pkg/logging"
 	"github.com/adminoid/vuego/pkg/project_path"
+	"github.com/julienschmidt/httprouter"
+	"net"
+	"net/http"
+	"time"
 )
 
 func main() {
-	fmt.Println("----------------")
-	fmt.Println(project_path.Root)
-	fmt.Println("----------------")
+
+	logger := logging.GetLogger()
+	logger.Println(project_path.Root)
+
 	cfg := config.NewConfig()
-	fmt.Println("cfg:")
-	fmt.Println(cfg)
+	logger.Printf("root path: %s", project_path.Root)
+	logger.Printf("config: %v", cfg)
 
 	postgresqlClient, err := postgresql.NewClient(context.TODO(), 3, cfg)
 	if err != nil {
-		fmt.Errorf("%v", err)
+		logger.Errorf("err: %v", err)
 	}
-
-	fmt.Println(postgresqlClient)
-
-	logger := logging.GetLogger()
+	logger.Printf("postgresqlClient: %v", postgresqlClient)
 
 	repository := user.NewRepository(postgresqlClient, logger)
-	users, err1 := repository.FindAll(context.TODO())
-	if err1 != nil {
-		logger.Fatal(err1)
+
+	logger.Info("register user handler")
+	userHandler := user.NewHandler(repository, logger)
+	router := httprouter.New()
+	userHandler.Register(router)
+
+	start(router, cfg)
+}
+
+func start(router *httprouter.Router, cfg config.Config) {
+	logger := logging.GetLogger()
+	logger.Info("start application")
+
+	var listener net.Listener
+	var listenErr error
+
+	logger.Info("listen tcp")
+	listener, listenErr = net.Listen("tcp", cfg.BindAddr)
+	logger.Infof("server is listening %s", cfg.BindAddr)
+
+	if listenErr != nil {
+		logger.Fatal(listenErr)
 	}
-	fmt.Println(users)
+
+	server := &http.Server{
+		Handler:      router,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+
+	logger.Fatal(server.Serve(listener))
 }
