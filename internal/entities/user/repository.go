@@ -2,17 +2,20 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/adminoid/vuego/pkg/clients/postgresql"
 	"github.com/adminoid/vuego/pkg/logging"
+	"github.com/jackc/pgconn"
 	"strings"
 )
 
 type User struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Password     string `json:"password"`
+	Email        string `json:"email"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type repository struct {
@@ -22,10 +25,22 @@ type repository struct {
 
 type RepositoryUser interface {
 	FindAll(ctx context.Context) (u []User, err error)
+	Create(ctx context.Context, u *User) error
+}
+
+func NewRepository(client postgresql.Client, logger *logging.Logger) RepositoryUser {
+	return &repository{
+		client: client,
+		logger: logger,
+	}
 }
 
 func formatQuery(q string) string {
-	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", ""), "\n", " ")
+	replacer := strings.NewReplacer("\t", "", "\n", "")
+	tmp := replacer.Replace(q)
+	fmt.Println(tmp)
+	return tmp
+	//return replacer.Replace(q)
 }
 
 func (r *repository) FindAll(ctx context.Context) (u []User, err error) {
@@ -59,9 +74,25 @@ func (r *repository) FindAll(ctx context.Context) (u []User, err error) {
 	return users, nil
 }
 
-func NewRepository(client postgresql.Client, logger *logging.Logger) RepositoryUser {
-	return &repository{
-		client: client,
-		logger: logger,
+func (r *repository) Create(ctx context.Context, u *User) error {
+	q := `
+		INSERT INTO users
+		    (name, password, email) 
+		VALUES 
+		       ($1, $2, $3) 
+		RETURNING id
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+	if err := r.client.QueryRow(ctx, q, u.Name, 123).Scan(&u.ID); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			pgErr = err.(*pgconn.PgError)
+			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
+			r.logger.Error(newErr)
+			return newErr
+		}
+		return err
 	}
+
+	return nil
 }
