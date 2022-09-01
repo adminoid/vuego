@@ -11,10 +11,11 @@ import (
 )
 
 type User struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Password     string `json:"password"`
-	Email        string `json:"email"`
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	//Password     string `json:"password"`
+	PasswordHash []byte `json:"password_hash"`
 	RefreshToken string `json:"refresh_token"`
 }
 
@@ -59,7 +60,7 @@ func (r *repository) FindAll(ctx context.Context) (u []User, err error) {
 	for rows.Next() {
 		var u User
 
-		err = rows.Scan(&u.ID, &u.Name)
+		err = rows.Scan(&u.ID, &u.Email)
 		if err != nil {
 			return nil, err
 		}
@@ -77,13 +78,13 @@ func (r *repository) FindAll(ctx context.Context) (u []User, err error) {
 func (r *repository) Create(ctx context.Context, u *User) error {
 	q := `
 		INSERT INTO users
-		    (name, password, email) 
+		    (name, email, password_hash) 
 		VALUES 
 		       ($1, $2, $3) 
 		RETURNING id
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-	if err := r.client.QueryRow(ctx, q, u.Name, 123).Scan(&u.ID); err != nil {
+	if err := r.client.QueryRow(ctx, q, u.Name, u.Email, u.PasswordHash).Scan(&u.ID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
 			pgErr = err.(*pgconn.PgError)
