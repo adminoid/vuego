@@ -28,6 +28,7 @@ type RepositoryUser interface {
 	Create(ctx context.Context, u *User) error
 	Get(ctx context.Context, email string) (User, error)
 	UpdateRefreshToken(ctx context.Context, userId string, rt string) error
+	GetUserByRt(ctx context.Context, rt string) (WithRtUser, error)
 }
 
 func NewRepository(client postgresql.Client, logger *logging.Logger) RepositoryUser {
@@ -129,6 +130,28 @@ func (r *repository) Get(ctx context.Context, email string) (User, error) {
 	err := r.client.QueryRow(ctx, q, email).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash)
 	if err != nil {
 		return User{}, err
+	}
+
+	return user, nil
+}
+
+type WithRtUser struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (r *repository) GetUserByRt(ctx context.Context, rt string) (WithRtUser, error) {
+	q := `
+		SELECT id, name, email, refresh_token FROM public.users WHERE refresh_token = $1
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	var user WithRtUser
+	err := r.client.QueryRow(ctx, q, rt).Scan(&user.ID, &user.Name, &user.Email, &user.RefreshToken)
+	if err != nil {
+		return WithRtUser{}, err
 	}
 
 	return user, nil

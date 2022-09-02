@@ -32,16 +32,68 @@ func (h *handler) Register(router *httprouter.Router) {
 	router.POST("/jwt/refresh", h.RefreshJwt)
 }
 
-type CredentialsRegister struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+type RtStruct struct {
+	Rt string `json:"rt"`
 }
 
 func (h *handler) RefreshJwt(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Content-Type", "application/json")
 
+	// todo:
+	//	 1. get rt from request
+	var rt RtStruct
+	err := json.NewDecoder(r.Body).Decode(&rt)
+	if err != nil {
+		fmt.Printf("json.Decode error is -- %v", err)
+	}
+
+	//	 2. check token for expiring
+	valid, err := checkToken(rt.Rt)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("%v", err), 400)
+		return
+	}
+	//fmt.Println(valid)
+
+	//	 3. get user from db by rt
+	if valid {
+		user, err := h.repository.GetUserByRt(context.TODO(), rt.Rt)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v", err), 400)
+			return
+		}
+
+		fmt.Println(user.RefreshToken)
+
+		//	 4. run generateTokenPair (will save new rt into db)
+		pairMap, err := h.generateTokenPair(user.ID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v", err), 400)
+			return
+		}
+
+		jwtTokensJson, err := json.Marshal(pairMap)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v", err), 500)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, err = w.Write(jwtTokensJson)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v", err), 500)
+			return
+		}
+	}
+
+	// 	 5. return new pair
+}
+
+type CredentialsRegister struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (h *handler) UserRegister(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -55,7 +107,8 @@ func (h *handler) UserRegister(w http.ResponseWriter, r *http.Request, p httprou
 
 	err := json.NewDecoder(r.Body).Decode(&userRegister)
 	if err != nil {
-		fmt.Printf("json.Decode error is -- %v", err)
+		http.Error(w, fmt.Sprintf("%v", err), 400)
+		return
 	}
 
 	user.Name = userRegister.Name
