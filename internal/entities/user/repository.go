@@ -27,6 +27,7 @@ type RepositoryUser interface {
 	FindAll(ctx context.Context) (u []User, err error)
 	Create(ctx context.Context, u *User) error
 	Get(ctx context.Context, email string) (User, error)
+	UpdateRefreshToken(ctx context.Context, userId string, rt string) error
 }
 
 func NewRepository(client postgresql.Client, logger *logging.Logger) RepositoryUser {
@@ -44,9 +45,29 @@ func formatQuery(q string) string {
 	//return replacer.Replace(q)
 }
 
+func (r *repository) UpdateRefreshToken(ctx context.Context, userId string, rt string) error {
+	q := `
+		UPDATE users SET refresh_token = $1
+  		WHERE id = $2;	
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+	if _, err := r.client.Query(ctx, q, rt, userId); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			pgErr = err.(*pgconn.PgError)
+			newErr := fmt.Errorf(fmt.Sprintf("SQL Error: %s, Detail: %s, Where: %s, Code: %s, SQLState: %s", pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState()))
+			r.logger.Error(newErr)
+			return newErr
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (r *repository) FindAll(ctx context.Context) (u []User, err error) {
 	q := `
-		SELECT id, name FROM public.users;
+		SELECT id, name FROM users;
 	`
 	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 

@@ -1,6 +1,8 @@
 package user
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
@@ -10,17 +12,27 @@ import (
 
 var mySignKey = []byte("@#$ASDf9324$@%#sdafBSDFRR$$@3493n3SDF")
 
-func GetPasswordHash(password string) []byte {
-	pwd := []byte(password)
+func (h *handler) LoginCheck(u CredentialsLogin) (map[string]string, error) {
 
-	hashedPassword, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
+	user, err := h.repository.Get(context.TODO(), u.Email)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return hashedPassword
+
+	res := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(u.Password))
+	if res != nil {
+		return nil, errors.New("wrong password")
+	}
+
+	validTokens, err := h.generateTokenPair(user.ID)
+	if err != nil {
+		return map[string]string{}, errors.New("token generation error")
+	}
+
+	return validTokens, nil
 }
 
-func generateTokenPair() (map[string]string, error) {
+func (h *handler) generateTokenPair(userId string) (map[string]string, error) {
 	// Create token
 	token := jwt.New(jwt.SigningMethodHS256)
 
@@ -50,6 +62,11 @@ func generateTokenPair() (map[string]string, error) {
 		return nil, err
 	}
 
+	err = h.repository.UpdateRefreshToken(context.TODO(), userId, rt)
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]string{
 		"access_token":  t,
 		"refresh_token": rt,
@@ -61,23 +78,42 @@ func checkAuth(endpoint func(http.ResponseWriter, *http.Request)) http.Handler {
 
 		if r.Header["Token"] != nil {
 
-			token, err := jwt.Parse(r.Header["Token"][0], func(token *jwt.Token) (interface{}, error) {
-				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					return nil, fmt.Errorf("there was an error")
-				}
-				return mySignKey, nil
-			})
-
+			checkingResult, err := checkToken(r.Header["Token"][0])
 			if err != nil {
-				fmt.Fprintf(w, err.Error())
+				http.Error(w, fmt.Sprintf("%v", err), 500)
+				return
 			}
-
-			if token.Valid {
+			if checkingResult {
 				endpoint(w, r)
 			}
 		} else {
-
-			fmt.Fprintf(w, "Not Authorized")
+			http.Error(w, fmt.Sprintf("Not Authorized"), 403)
+			return
 		}
 	})
+}
+
+func checkToken(tokenValue string) (bool, error) {
+	token, err := jwt.Parse(tokenValue, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("there was an error")
+		}
+		return mySignKey, nil
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return token.Valid, err
+}
+
+func GetPasswordHash(password string) []byte {
+	pwd := []byte(password)
+
+	hashedPassword, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
+	return hashedPassword
 }

@@ -3,11 +3,9 @@ package user
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/adminoid/vuego/pkg/logging"
 	"github.com/julienschmidt/httprouter"
-	"golang.org/x/crypto/bcrypt"
 	"net/http"
 )
 
@@ -29,14 +27,21 @@ func NewHandler(repository RepositoryUser, logger *logging.Logger) *handler {
 
 func (h *handler) Register(router *httprouter.Router) {
 	router.Handler(http.MethodGet, "/users", checkAuth(h.GetList))
-	router.POST("/register", h.UserRegister)
-	router.POST("/login", h.Login)
+	router.POST("/auth/register", h.UserRegister)
+	router.POST("/auth/login", h.Login)
+	router.POST("/jwt/refresh", h.RefreshJwt)
 }
 
 type CredentialsRegister struct {
 	Name     string `json:"name"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+func (h *handler) RefreshJwt(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+
 }
 
 func (h *handler) UserRegister(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
@@ -117,26 +122,9 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write(jwtTokensJson)
-}
-
-func (h *handler) LoginCheck(u CredentialsLogin) (map[string]string, error) {
-
-	// TODO Check user here
-	user, err := h.repository.Get(context.TODO(), u.Email)
+	_, err = w.Write(jwtTokensJson)
 	if err != nil {
-		return nil, err
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
 	}
-
-	res := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(u.Password))
-	if res != nil {
-		return nil, errors.New("wrong password")
-	}
-
-	validTokens, err := generateTokenPair()
-	if err != nil {
-		return map[string]string{}, errors.New("token generation error")
-	}
-
-	return validTokens, nil
 }
