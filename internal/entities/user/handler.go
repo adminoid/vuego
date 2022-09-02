@@ -70,18 +70,21 @@ func (h *handler) GetList(w http.ResponseWriter, r *http.Request) {
 
 	all, err := h.repository.FindAll(context.TODO())
 	if err != nil {
-		http.Error(w, "Forbidden", 400)
+		http.Error(w, fmt.Sprintf("%v", err), 400)
+		return
 	}
 
 	allBytes, err := json.Marshal(all)
 	if err != nil {
-		http.Error(w, "Parsing json error", 500)
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(allBytes)
 	if err != nil {
-		http.Error(w, "write header error", 500)
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
 	}
 }
 
@@ -97,17 +100,20 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	var u CredentialsLogin
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
-		fmt.Printf("json.Decode error is -- %v", err)
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
 	}
 
 	jwtTokensByte, err := h.LoginCheck(u)
 	if err != nil {
-		fmt.Printf("login check error is -- %v", err)
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
 	}
 
 	jwtTokensJson, err := json.Marshal(jwtTokensByte)
 	if err != nil {
-		fmt.Printf("marshal error is -- %v", err)
+		http.Error(w, fmt.Sprintf("%v", err), 500)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
