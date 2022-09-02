@@ -1,38 +1,23 @@
 package user
 
 import (
-	"crypto/rand"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
-	"golang.org/x/crypto/scrypt"
-	"io"
-	"log"
+	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"time"
 )
 
 var mySignKey = []byte("@#$ASDf9324$@%#sdafBSDFRR$$@3493n3SDF")
 
-const (
-	PwSaltBytes = 32
-	PwHashBytes = 64
-)
+func GetPasswordHash(password string) []byte {
+	pwd := []byte(password)
 
-func HashAndSalt(password string) []byte {
-	salt := make([]byte, PwSaltBytes)
-	_, err := io.ReadFull(rand.Reader, salt)
+	hashedPassword, err := bcrypt.GenerateFromPassword(pwd, bcrypt.DefaultCost)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-
-	hash, err := scrypt.Key([]byte(password), salt, 1<<14, 8, 1, PwHashBytes)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("%x\n", hash)
-
-	return hash
+	return hashedPassword
 }
 
 func generateTokenPair() (map[string]string, error) {

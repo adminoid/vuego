@@ -11,12 +11,11 @@ import (
 )
 
 type User struct {
-	ID    string `json:"id"`
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	//Password     string `json:"password"`
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Email        string `json:"email"`
 	PasswordHash []byte `json:"password_hash"`
-	RefreshToken string `json:"refresh_token"`
+	//RefreshToken string `json:"refresh_token"`
 }
 
 type repository struct {
@@ -27,6 +26,7 @@ type repository struct {
 type RepositoryUser interface {
 	FindAll(ctx context.Context) (u []User, err error)
 	Create(ctx context.Context, u *User) error
+	Get(ctx context.Context, email string) (User, error)
 }
 
 func NewRepository(client postgresql.Client, logger *logging.Logger) RepositoryUser {
@@ -96,4 +96,19 @@ func (r *repository) Create(ctx context.Context, u *User) error {
 	}
 
 	return nil
+}
+
+func (r *repository) Get(ctx context.Context, email string) (User, error) {
+	q := `
+		SELECT id, name, email, password_hash FROM public.users WHERE email = $1
+	`
+	r.logger.Trace(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	var user User
+	err := r.client.QueryRow(ctx, q, email).Scan(&user.ID, &user.Name, &user.Email, &user.PasswordHash)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
 }
