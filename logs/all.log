@@ -780,3 +780,8 @@ time="2022-09-02T09:16:25+03:00" level=trace msg="SQL Query: SELECT id, name FRO
 time="2022-09-02T09:16:26+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
 time="2022-09-02T09:16:51+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
 time="2022-09-02T09:17:01+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
+time="2022-09-02T09:17:59+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
+time="2022-09-02T09:18:03+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
+time="2022-09-02T09:18:05+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
+time="2022-09-02T09:19:59+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
+time="2022-09-02T09:20:17+03:00" level=trace msg="SQL Query: SELECT id, name FROM users;" func="github.com/adminoid/vuego/internal/entities/user.(*repository).FindAll()" file="repository.go:73"
