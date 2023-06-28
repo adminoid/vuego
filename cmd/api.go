@@ -28,10 +28,10 @@ func main() {
 	}
 	logger.Printf("postgresqlClient: %v", postgresqlClient)
 
-	repository := user.NewRepository(postgresqlClient, logger)
+	userRepository := user.NewRepository(postgresqlClient, logger)
 
 	logger.Info("register user handler")
-	userHandler := user.NewHandler(repository, logger)
+	userHandler := user.NewHandler(userRepository, logger)
 	router := httprouter.New()
 	userHandler.Register(router)
 
